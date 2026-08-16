@@ -119,13 +119,14 @@ class MainActivity : FlutterActivity() {
         settings.textZoom = 100
     }
 
-        private fun createPdf(webView: WebView, outputFile: File) {
+    private fun createPdf(webView: WebView, outputFile: File) {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                 finishConversion(null, "Unsupported Android version", null)
                 return
             }
 
+            val printManager = getSystemService(Context.PRINT_SERVICE) as PrintManager
             val jobName = "MHT_PDF_${System.currentTimeMillis()}"
 
             val printAttributes = PrintAttributes.Builder()
@@ -136,7 +137,7 @@ class MainActivity : FlutterActivity() {
                 .build()
 
             val adapter = webView.createPrintDocumentAdapter(jobName)
-
+            
             val fileDescriptor = android.os.ParcelFileDescriptor.open(
                 outputFile,
                 android.os.ParcelFileDescriptor.MODE_READ_WRITE or
@@ -144,7 +145,7 @@ class MainActivity : FlutterActivity() {
                     android.os.ParcelFileDescriptor.MODE_TRUNCATE
             )
 
-            // 先ほど作成した Wrapper を呼び出して処理を委譲します
+            // 先ほど作成した PdfPrintWrapper を呼び出す
             android.print.PdfPrintWrapper.print(
                 adapter,
                 printAttributes,
@@ -157,7 +158,6 @@ class MainActivity : FlutterActivity() {
             finishConversion(null, "Exception: ${e.message}", webView)
         }
     }
-   }
 
     private fun finishConversion(outputPath: String?, error: String?, webView: WebView?) {
         val res = pendingResult
@@ -174,16 +174,6 @@ class MainActivity : FlutterActivity() {
             res?.success(outputPath)
         } else {
             res?.error("CONVERSION_FAILED", error ?: "Unknown error", null)
-        }
-    }
-
-
-        override fun onWriteFailed(error: CharSequence?) {
-            onComplete(false, error?.toString() ?: "Write failed")
-        }
-
-        override fun onWriteCancelled() {
-            onComplete(false, "Cancelled")
         }
     }
 
