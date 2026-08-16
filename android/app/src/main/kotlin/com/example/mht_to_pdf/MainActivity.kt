@@ -119,14 +119,13 @@ class MainActivity : FlutterActivity() {
         settings.textZoom = 100
     }
 
-    private fun createPdf(webView: WebView, outputFile: File) {
+        private fun createPdf(webView: WebView, outputFile: File) {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                 finishConversion(null, "Unsupported Android version", null)
                 return
             }
 
-            val printManager = getSystemService(Context.PRINT_SERVICE) as PrintManager
             val jobName = "MHT_PDF_${System.currentTimeMillis()}"
 
             val printAttributes = PrintAttributes.Builder()
@@ -137,9 +136,6 @@ class MainActivity : FlutterActivity() {
                 .build()
 
             val adapter = webView.createPrintDocumentAdapter(jobName)
-            val resultCallback = PdfWriteResultCallback(outputFile) { success, error ->
-                finishConversion(if (success) outputFile.absolutePath else null, error, webView)
-            }
 
             val fileDescriptor = android.os.ParcelFileDescriptor.open(
                 outputFile,
@@ -148,35 +144,20 @@ class MainActivity : FlutterActivity() {
                     android.os.ParcelFileDescriptor.MODE_TRUNCATE
             )
 
-            val cancellationSignal = android.os.CancellationSignal()
-
-            adapter.onStart()
-            adapter.onLayout(
+            // 先ほど作成した Wrapper を呼び出して処理を委譲します
+            android.print.PdfPrintWrapper.print(
+                adapter,
                 printAttributes,
-                printAttributes,
-                null,
-                object : android.print.PrintDocumentAdapter.LayoutResultCallback() {
-                    override fun onLayoutFinished(info: android.print.PrintDocumentInfo?, changed: Boolean) {
-                        adapter.onWrite(
-                            arrayOf(android.print.PageRange.ALL_PAGES),
-                            fileDescriptor,
-                            cancellationSignal,
-                            resultCallback
-                        )
-                    }
-
-                    override fun onLayoutFailed(error: CharSequence?) {
-                        adapter.onFinish()
-                        try { fileDescriptor.close() } catch (_: Exception) {}
-                        finishConversion(null, "Layout failed: ${error ?: "unknown"}", webView)
-                    }
-                },
-                null
-            )
+                fileDescriptor
+            ) { success, error ->
+                try { fileDescriptor.close() } catch (_: Exception) {}
+                finishConversion(if (success) outputFile.absolutePath else null, error, webView)
+            }
         } catch (e: Exception) {
             finishConversion(null, "Exception: ${e.message}", webView)
         }
     }
+   }
 
     private fun finishConversion(outputPath: String?, error: String?, webView: WebView?) {
         val res = pendingResult
