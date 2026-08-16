@@ -177,13 +177,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private class PdfWriteResultCallback(
-        private val outputFile: File,
-        private val onComplete: (Boolean, String?) -> Unit
-    ) : android.print.PrintDocumentAdapter.WriteResultCallback() {
-        override fun onWriteFinished(pages: Array<out android.print.PageRange>?) {
-            onComplete(true, null)
-        }
 
         override fun onWriteFailed(error: CharSequence?) {
             onComplete(false, error?.toString() ?: "Write failed")
